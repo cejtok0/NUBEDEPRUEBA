@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>SUPERENVIOS DE COLOMBIA</title>
+  <style>
+    :root{--bg:#f4f6f8;--card:#ffffff;--accent:#2563eb;--danger:#ef4444;--muted:#6b7280}
+    *{box-sizing:border-box}
+    body{font-family:Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; margin:20px; background:var(--bg); color:#111}
+    .container{max-width:980px;margin:0 auto}
+    header{display:flex;align-items:center;justify-content:space-between;margin-bottom:18px}
+    h1{font-size:20px;margin:0}
+    .card{background:var(--card);border-radius:12px;padding:16px;box-shadow:0 6px 18px rgba(15,23,42,0.06)}
+    form{display:grid;gap:8px;grid-template-columns:1fr 1fr 1fr auto}
+    label{font-size:12px;color:var(--muted)}
+    input[type="text"]{width:100%;padding:10px;border:1px solid #e6e9ee;border-radius:8px}
+    .actions{display:flex;gap:8px;align-items:end}
+    button{cursor:pointer;padding:10px 12px;border-radius:8px;border:0;background:var(--accent);color:#fff}
+    button.secondary{background:#eef2ff;color:var(--accent);border:1px solid rgba(37,99,235,0.12)}
+    table{width:100%;border-collapse:collapse;margin-top:16px}
+    th,td{padding:10px 12px;text-align:left;border-bottom:1px solid #eef2f6}
+    th{font-size:13px;color:var(--muted)}
+    td small{display:block;color:var(--muted);font-size:12px}
+    .row-actions{display:flex;gap:6px}
+    .btn-edit{background:#f97316;color:#fff;padding:6px 8px;border-radius:6px;border:0}
+    .btn-delete{background:var(--danger);color:#fff;padding:6px 8px;border-radius:6px;border:0}
+    .btn-save{background:#10b981;color:#fff;padding:6px 8px;border-radius:6px;border:0}
+    .btn-cancel{background:#6b7280;color:#fff;padding:6px 8px;border-radius:6px;border:0}
+    .empty{padding:20px;text-align:center;color:var(--muted)}
+    @media (max-width:720px){form{grid-template-columns:1fr} .actions{justify-content:flex-end}}
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <h1>SUPERENVIOS DE COLOMBIA</h1>
+      <div style="color:var(--muted);font-size:13px">Trabajas en la mejor empresa de envio de toda Colombia</div>
+    </header>
+
+    <section class="card" aria-labelledby="formTitle">
+      <h2 id="formTitle" style="font-size:14px;margin:0 0 8px 0">Nuevo envío</h2>
+      <form id="form">
+        <div>
+          <label for="destinatario">Destinatario</label>
+          <input id="destinatario" name="destinatario" type="text" placeholder="Nombre del destinatario" required />
+        </div>
+        <div>
+          <label for="direccion">Dirección de envío</label>
+          <input id="direccion" name="direccion" type="text" placeholder="Calle, ciudad, país" required />
+        </div>
+        <div>
+          <label for="descripcion">Descripción</label>
+          <input id="descripcion" name="descripcion" type="text" placeholder="Contenido / observaciones" required />
+        </div>
+        <div class="actions">
+          <button id="btnAdd" type="submit">Agregar envío</button>
+          <button id="btnClear" type="button" class="secondary">Limpiar</button>
+        </div>
+      </form>
+    </section>
+
+    <section class="card" style="margin-top:14px">
+      <h2 style="font-size:14px;margin:0 0 8px 0">Lista de envíos</h2>
+      <div id="tableWrap">
+        <table id="enviosTable" aria-live="polite">
+          <thead>
+            <tr>
+              <th>Destinatario</th>
+              <th>Dirección</th>
+              <th>Descripción</th>
+              <th style="width:180px">Acciones</th>
+            </tr>
+          </thead>
+          <tbody id="enviosBody">
+            <!-- filas generadas por JavaScript -->
+          </tbody>
+        </table>
+        <div id="emptyState" class="empty">No hay envíos. Crea uno usando el formulario.</div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    // Manejo sencillo de envíos en el cliente. Persistencia en localStorage.
+    const form = document.getElementById('form');
+    const destinatario = document.getElementById('destinatario');
+    const direccion = document.getElementById('direccion');
+    const descripcion = document.getElementById('descripcion');
+    const enviosBody = document.getElementById('enviosBody');
+    const emptyState = document.getElementById('emptyState');
+
+    const STORAGE_KEY = 'gestor_envios_v1';
+
+    let envios = loadEnvios();
+
+    function saveEnvios(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(envios));
+    }
+
+    function loadEnvios(){
+      try{
+        const raw = localStorage.getItem(STORAGE_KEY);
+        return raw ? JSON.parse(raw) : [];
+      }catch(e){
+        console.error('Error leyendo envíos:', e);
+        return [];
+      }
+    }
+
+    function render(){
+      enviosBody.innerHTML = '';
+      if(envios.length === 0){
+        emptyState.style.display = 'block';
+        return;
+      }
+      emptyState.style.display = 'none';
+
+      envios.forEach((env, idx) => {
+        const tr = document.createElement('tr');
+        tr.dataset.index = idx;
+
+        const tdDest = document.createElement('td');
+        tdDest.textContent = env.destinatario;
+
+        const tdDir = document.createElement('td');
+        tdDir.textContent = env.direccion;
+
+        const tdDesc = document.createElement('td');
+        tdDesc.textContent = env.descripcion;
+
+        const tdActions = document.createElement('td');
+        const actions = document.createElement('div');
+        actions.className = 'row-actions';
+
+        const editBtn = document.createElement('button');
+        editBtn.className = 'btn-edit';
+        editBtn.type = 'button';
+        editBtn.textContent = 'Editar';
+        editBtn.addEventListener('click', () => startEditRow(tr, env, idx));
+
+        const delBtn = document.createElement('button');
+        delBtn.className = 'btn-delete';
+        delBtn.type = 'button';
+        delBtn.textContent = 'Eliminar';
+        delBtn.addEventListener('click', () => deleteEnvio(idx));
+
+        actions.appendChild(editBtn);
+        actions.appendChild(delBtn);
+        tdActions.appendChild(actions);
+
+        tr.appendChild(tdDest);
+        tr.appendChild(tdDir);
+        tr.appendChild(tdDesc);
+        tr.appendChild(tdActions);
+
+        enviosBody.appendChild(tr);
+      });
+    }
+
+    function addEnvio(e){
+      e.preventDefault();
+      const nuevo = {
+        destinatario: destinatario.value.trim(),
+        direccion: direccion.value.trim(),
+        descripcion: descripcion.value.trim()
+      };
+      if(!nuevo.destinatario || !nuevo.direccion || !nuevo.descripcion){
+        alert('Todos los campos son obligatorios.');
+        return;
+      }
+      envios.push(nuevo);
+      saveEnvios();
+      render();
+      form.reset();
+      destinatario.focus();
+    }
+
+    function deleteEnvio(index){
+      if(!confirm('¿Eliminar este envío?')) return;
+      envios.splice(index,1);
+      saveEnvios();
+      render();
+    }
+
+    function startEditRow(tr, env, idx){
+      // Reemplazar celdas por inputs en el mismo renglón
+      tr.innerHTML = '';
+      const inDest = document.createElement('input'); inDest.type='text'; inDest.value = env.destinatario; inDest.style.padding='6px'; inDest.style.width='100%'; inDest.required = true;
+      const inDir = document.createElement('input'); inDir.type='text'; inDir.value = env.direccion; inDir.style.padding='6px'; inDir.style.width='100%'; inDir.required = true;
+      const inDesc = document.createElement('input'); inDesc.type='text'; inDesc.value = env.descripcion; inDesc.style.padding='6px'; inDesc.style.width='100%'; inDesc.required = true;
+
+      const td1 = document.createElement('td'); td1.appendChild(inDest);
+      const td2 = document.createElement('td'); td2.appendChild(inDir);
+      const td3 = document.createElement('td'); td3.appendChild(inDesc);
+      const td4 = document.createElement('td');
+
+      const saveBtn = document.createElement('button'); saveBtn.className='btn-save'; saveBtn.type='button'; saveBtn.textContent='Guardar';
+      const cancelBtn = document.createElement('button'); cancelBtn.className='btn-cancel'; cancelBtn.type='button'; cancelBtn.textContent='Cancelar';
+      const delBtn = document.createElement('button'); delBtn.className='btn-delete'; delBtn.type='button'; delBtn.textContent='Eliminar';
+
+      saveBtn.addEventListener('click', () => {
+        const updated = {
+          destinatario: inDest.value.trim(),
+          direccion: inDir.value.trim(),
+          descripcion: inDesc.value.trim()
+        };
+        if(!updated.destinatario || !updated.direccion || !updated.descripcion){
+          alert('Todos los campos son obligatorios.');
+          return;
+        }
+        envios[idx] = updated;
+        saveEnvios();
+        render();
+      });
+
+      cancelBtn.addEventListener('click', () => render());
+      delBtn.addEventListener('click', () => { if(confirm('¿Eliminar este envío?')){ deleteEnvio(idx);} });
+
+      const actionWrap = document.createElement('div'); actionWrap.className='row-actions';
+      actionWrap.appendChild(saveBtn); actionWrap.appendChild(cancelBtn); actionWrap.appendChild(delBtn);
+      td4.appendChild(actionWrap);
+
+      tr.appendChild(td1); tr.appendChild(td2); tr.appendChild(td3); tr.appendChild(td4);
+
+      // focus first input
+      inDest.focus();
+
+      // allow Enter to save and Esc to cancel
+      const keyHandler = (evt) => {
+        if(evt.key === 'Enter') saveBtn.click();
+        if(evt.key === 'Escape') cancelBtn.click();
+      };
+      inDest.addEventListener('keydown', keyHandler);
+      inDir.addEventListener('keydown', keyHandler);
+      inDesc.addEventListener('keydown', keyHandler);
+    }
+
+    form.addEventListener('submit', addEnvio);
+    document.getElementById('btnClear').addEventListener('click', () => form.reset());
+
+    // Inicial render
+    render();
+  </script>
+</body>
+</html>
